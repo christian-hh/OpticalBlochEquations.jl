@@ -42,5 +42,7 @@ sim_params = MutableNamedTuple(
     
     Bx = 0.,
     By = 0.,
-    Bz = 0.
+    Bz = 0.,
+
+    dt_diffusion = 1e-7 / (1/Γ)
 )

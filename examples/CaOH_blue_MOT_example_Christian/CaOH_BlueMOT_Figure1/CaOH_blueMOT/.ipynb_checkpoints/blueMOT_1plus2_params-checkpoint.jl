@@ -26,6 +26,7 @@ Isat = π*h*c*Γ/(3λ^3)
 P = 0.60 * 13.1e-3 # 13.1 mW/1 V at 1.0 V, factor of 0.55 to match scattering rates
 # P = 0.55 * 13.1e-3 # 13.1 mW/1 V at 1.0 V, factor of 0.55 to match scattering rates
 # P = 0.50 * 13.1e-3 # 13.1 mW/1 V at 1.0 V, factor of 0.55 to match scattering rates
+# P = 0.45 * 13.1e-3 # 13.1 mW/1 V at 1.0 V, factor of 0.55 to match scattering rates
 I = 2P / (π * beam_radius^2)
 
 total_sat = I / Isat

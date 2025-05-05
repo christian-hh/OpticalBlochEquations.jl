@@ -2,7 +2,7 @@
 include("cooling_params.jl")
 
 t_start = 0.0
-t_end   = 3e-3
+t_end   = 1e-3
 t_span  = (t_start, t_end) ./ (1/Γ)
 
 p = initialize_prob(sim_type, energies, freqs, sats, pols, beam_radius, d, m/(ħ*k^2/Γ), Γ, k, sim_params, update_p!, add_terms_dψ!)
@@ -17,9 +17,7 @@ prob = ODEProblem(ψ_fast!, p.u0, sim_type.(t_span), p; kwargs...)
 
 # DIFFUSION PROBLEM #
 p_diffusion = initialize_prob(sim_type, energies, freqs, sats, pols, Inf, d, m/(ħ*k^2/Γ), Γ, k, sim_params, update_p_diffusion!, add_terms_dψ!)
-
-cb1_diffusion = DiscreteCallback(condition_discrete, stochastic_collapse_new!, save_positions=(false,false))
-cbs_diffusion = CallbackSet(cb1_diffusion)
+cbs_diffusion = CallbackSet(cb1)
 
 kwargs = (alg=DP5(), reltol=1e-4, abstol=1e-5, saveat=1000, maxiters=100000000, callback=cbs_diffusion)
 prob_diffusion = ODEProblem(ψ_fast_ballistic!, p_diffusion.u0, sim_type.(t_span), p_diffusion; kwargs...)
@@ -36,8 +34,9 @@ prob_diffusion = ODEProblem(ψ_fast_ballistic!, p_diffusion.u0, sim_type.(t_span
     return nothing
 end
 cb_periodic = PeriodicCallback(diffusion_kick, p.sim_params.dt_diffusion, save_positions=(false,false))
-# cbs_periodic = CallbackSet(cb1, cb2, cb_periodic)
 cbs_periodic = CallbackSet(cb1, cb_periodic)
 
 kwargs = (alg=DP5(), reltol=1e-4, abstol=1e-5, saveat=1000, maxiters=100000000, callback=cbs_periodic)
-prob_periodic = ODEProblem(ψ_fast!, p.u0, sim_type.(t_span), p; kwargs...)
+# kwargs = (alg=DP5(), reltol=1e-5, abstol=1e-6, saveat=1000, maxiters=100000000, callback=cbs_periodic)
+# prob_periodic = ODEProblem(ψ_fast!, p.u0, sim_type.(t_span), p; kwargs...)
+prob_periodic = ODEProblem(ψ_fast_ballistic!, p.u0, sim_type.(t_span), p; kwargs...)

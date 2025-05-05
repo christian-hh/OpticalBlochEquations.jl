@@ -95,7 +95,7 @@ function σ_fit(xs)
     v = v[1:end-1] .+ dv/2
     fv = hist_data.weights ./ (sum(hist_data.weights) * dv)
     
-    v_fit = curve_fit(gaussian, v, fv, [60e-6, 0., 1000], autodiff=:forward)
+    v_fit = curve_fit(gaussian, v, fv, [100e-6, 0., 1000], autodiff=:forward)
     σ, x0, A = v_fit.param
     
     return abs(σ)
@@ -197,7 +197,7 @@ end
 
 function density_vs_time(sols)
 
-    N = 5000
+    N = 4815
     
     σs = σ_vs_time(sols)
     densities = zeros(length(σs))
@@ -238,7 +238,6 @@ function distributed_solve(n_trajectories, prob, prob_func, scan_func, scan_valu
 
         @async begin
             for (i, scan_value) ∈ enumerate(scan_values)
-
                 sols_futures = Vector{Future}()
                 for pid ∈ workers()
                     sols_future = @spawnat pid begin

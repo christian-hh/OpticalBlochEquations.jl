@@ -26,7 +26,7 @@ end
             ψ_i_re = ψ.re[j]
             ψ_i_im = ψ.im[j]
             
-            H_re = p.sim_params.trap_scalar * p.sim_params.H_ODT_matrix[i,j]
+            H_re = -p.sim_params.trap_scalar * p.sim_params.H_ODT_matrix[i,j]
             H_im = 0.0
             
             dψ_i_re += ψ_i_re * H_re - ψ_i_im * H_im

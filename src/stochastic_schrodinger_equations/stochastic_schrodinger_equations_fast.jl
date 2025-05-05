@@ -535,6 +535,95 @@ function stochastic_collapse_new!(integrator)
 end
 export stochastic_collapse_new!
 
+function stochastic_collapse_nokick!(integrator)
+
+    u = integrator.u
+    p = integrator.p
+    n_states = p.n_states
+    n_excited = 4
+    n_ground = p.n_g
+    d_ge = p.d_ge
+    ψ = p.ψ
+    
+    p⁺ = zero(eltype(ψ.re))
+    p⁰ = zero(eltype(ψ.re))
+    p⁻ = zero(eltype(ψ.re))
+
+    @turbo for i ∈ 1:n_excited
+        c_i_re = ψ.re[n_ground + i] 
+        c_i_im = -ψ.im[n_ground + i] # take conjugate
+        for j ∈ 1:n_excited
+            c_j_re = ψ.re[n_ground + j]
+            c_j_im = ψ.im[n_ground + j]
+            re = c_i_re * c_j_re - c_i_im * c_j_im
+            for k ∈ 1:n_ground
+                p⁺ += re * d_ge[k,i,1] * d_ge[k,j,1] # assume that d is real
+                p⁰ += re * d_ge[k,i,2] * d_ge[k,j,2]
+                p⁻ += re * d_ge[k,i,3] * d_ge[k,j,3]
+            end
+            # note the polarization p in d[:,:,p] is defined to be m_e - m_g, 
+            # whereas the polarization of the emitted photon is m_g - m_e
+        end
+    end
+
+    p_norm = p⁺ + p⁰ + p⁻
+    rn = rand() * p_norm
+    
+    pol = 0
+    if 0 < rn <= p⁺ # photon is measured to have polarization σ⁺
+        pol = 1
+    elseif p⁺ < rn <= p⁺ + p⁰ # photon is measured to have polarization σ⁰
+        pol = 2
+    else # photon is measured to have polarization σ⁻
+        pol = 3
+    end
+
+    # zero ground state amplitudes
+    @turbo for i ∈ 1:n_ground
+        # ψ.re[i] = zero(eltype(ψ.re))
+        # ψ.im[i] = zero(eltype(ψ.im))
+        u[i] = zero(eltype(u))
+        u[i+n_states] = zero(eltype(u))
+    end
+
+    # decay from excited to ground state
+    @turbo for i ∈ 1:n_ground
+        for j ∈ 1:n_excited
+            d = d_ge[i,j,pol]
+            # ψ.re[i] += d * ψ.re[n_ground+j]
+            # ψ.im[i] += d * ψ.im[n_ground+j]
+            u[i] += d * ψ.re[n_ground+j]
+            u[i+n_states] += d * ψ.im[n_ground+j]
+        end
+    end
+    
+    # zero excited state amplitudes
+    @turbo for i ∈ 1:n_excited
+        # ψ.re[n_ground+i] = zero(eltype(ψ.re))
+        # ψ.im[n_ground+i] = zero(eltype(ψ.im))
+        u[n_ground+i] = zero(eltype(u))
+        u[i+n_states+n_ground] = zero(eltype(u))
+    end
+
+    # zero integrated excited state populations - # add this with loop above???
+    @turbo for i ∈ 1:n_excited
+        u[2n_states+i] = zero(eltype(u))
+    end
+
+    # add spontaneous decay
+    if p.add_spontaneous_decay_kick
+        @inbounds @fastmath for i ∈ 1:3
+            u[2n_states + n_excited + 3 + i] += rand((-1,1)) / p.m
+        end
+    end
+
+    p.time_to_decay = rand(p.decay_dist)
+    p.n_scatters += 1
+
+    return nothing
+end
+export stochastic_collapse_nokick!
+
 @inline function condition_new(u,t,integrator)
     p = integrator.p
     integrated_excited_pop = zero(eltype(u))

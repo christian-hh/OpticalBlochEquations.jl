@@ -18,7 +18,7 @@ H_ODT_matrix = deserialize("H_ODT_matrix.jl")
 
 import MutableNamedTuples: MutableNamedTuple
 sim_params = MutableNamedTuple(
-    trap_scalar = sqrt(2I0_trap * 0.0 / (ε0 * c)),
+    trap_scalar = 2π * 0.03 * 2I0_trap / (ε0 * c),
     H_ODT_matrix = MMatrix{size(H_ODT_matrix)...}(sim_type.(H_ODT_matrix)),
     
     x_dist = Normal(0, σx_initial),
