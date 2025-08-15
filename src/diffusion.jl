@@ -8,8 +8,9 @@ function compute_fz(prob)
     p = prob.p
     
     f_z = p.sim_params.f_z
-    kEs = p.kEs
-    d_ge = p.d_ge
+    kEs = p.kEs[1]
+    d_ge = p.d
+    n_g = p.n_g
 
     k = 3
     @turbo for j ∈ axes(d_ge,2)
@@ -25,10 +26,10 @@ function compute_fz(prob)
                 f_z_ij_re += val_x_re
                 f_z_ij_im += val_x_im
             end
-            f_z.re[i,j+12] = f_z_ij_re
-            f_z.im[i,j+12] = f_z_ij_im
-            f_z.re[j+12,i] = f_z_ij_re
-            f_z.im[j+12,i] = -f_z_ij_im
+            f_z.re[i,j+n_g] = f_z_ij_re
+            f_z.im[i,j+n_g] = f_z_ij_im
+            f_z.re[j+n_g,i] = f_z_ij_re
+            f_z.im[j+n_g,i] = -f_z_ij_im
         end
     end
 
@@ -50,7 +51,7 @@ export compute_fz
 function compute_diffusion(prob, prob_func, n_avgs, t_end, τ_total, n_times, channel)
     
     n_states = prob.p.n_states
-    n_excited = prob.p.n_excited
+    n_excited = prob.p.n_e
     F_idx = prob.p.F_idx
     coord_idx = 3
 
@@ -105,8 +106,8 @@ function compute_diffusion(prob, prob_func, n_avgs, t_end, τ_total, n_times, ch
         last_decay_time = sol_ϕ.prob.p.last_decay_time
         time_to_decay = sol_ϕ.prob.p.time_to_decay
         
-        ϕ.re .= ut[1:16]
-        ϕ.im .= ut[17:32]
+        ϕ.re .= ut[1:n_states]
+        ϕ.im .= ut[(n_states+1):2n_states]
 
         compute_fz(sol_ϕ.prob)
         Heisenberg!(sol_ϕ.prob.p.sim_params.f_z, sol_ϕ.prob.p.eiω0ts)
@@ -177,9 +178,159 @@ function compute_diffusion(prob, prob_func, n_avgs, t_end, τ_total, n_times, ch
             fτ_fts[j] += fτ_ft
 
         end
+        
     end
     Cs ./= n_avgs
     fτ_fts ./= n_avgs
     
     return Cs, fτ_fts, Cs_integrated, fτ_fts_integrated
 end
+export compute_diffusion
+
+# import DifferentialEquations: init, set_t!, step!
+# function compute_diffusion(prob, prob_func, n_avgs, t_total, τ_total, n_times, channel)
+    
+#     Γ = prob.p.Γ
+
+#     integrator = init(prob)
+
+#     n_states = prob.p.n_states
+#     n_excited = prob.p.n_e
+#     F_idx = prob.p.F_idx
+#     coord_idx = 3
+
+#     # data arrays
+#     Cs = zeros(Float64, n_times)
+#     fτ_fts = zeros(Float64, n_times)
+
+#     Cs_integrated = zeros(Float64, n_avgs)
+#     fτ_fts_integrated = zeros(Float64, n_avgs)
+
+#     # initialize with equal population between all states
+#     ψ₀ = StructArray(zeros(ComplexF64, n_states))
+#     ψ₀[1:n_states] .= 1.0
+#     ψ₀ ./= norm(ψ₀)
+
+#     ϕ = deepcopy(ψ₀)
+#     ut = deepcopy(integrator.u)
+
+#     fτs = zeros(n_times)
+#     cps = zeros(n_times)
+#     cms = zeros(n_times)
+
+#     for i ∈ 1:n_avgs
+        
+#         put!(channel, true)
+        
+#         # set times to simulate
+#         t_end′ = (t_total + 1e-6 * rand()) / (1/Γ)
+#         dτ = τ_total / n_times / (1/Γ)
+
+#         # create the new problem, solve it up to `t`
+#         set_t!(integrator, 0)
+#         update_u!(integrator.u, ψ₀, n_states)
+#         prob_func(integrator)
+#         integrator.p.last_decay_time = 0.
+#         integrator.p.time_to_decay = rand(integrator.p.decay_dist)
+#         step!(integrator, t_end′, true)
+#         ut .= integrator.u
+
+#         last_decay_time = integrator.p.last_decay_time
+#         time_to_decay = integrator.p.time_to_decay
+        
+#         ϕ.re .= ut[1:n_states]
+#         ϕ.im .= ut[(n_states+1):2n_states]
+
+#         compute_fz(integrator)
+#         Heisenberg!(integrator.p.sim_params.f_z, integrator.p.eiω0ts)
+#         f = integrator.p.sim_params.f_z
+
+#         χm = ϕ .- f*ϕ
+#         χp = ϕ .+ f*ϕ
+#         μm = norm(χm)
+#         μp = norm(χp)
+#         χm ./= μm
+#         χp ./= μp
+
+#         ft = real(ϕ' * f * ϕ)
+#         fχm = real(χm' * f * χm)
+#         fχp = real(χp' * f * χp)
+
+#         # solve the problem up to time `τ`
+#         integrator.p.last_decay_time = last_decay_time
+#         integrator.p.time_to_decay = time_to_decay
+#         integrator.u[F_idx + coord_idx + 3] = 0.
+
+#         for j ∈ 1:n_times
+#             step!(integrator, dτ, true)
+#             fτs[j] = integrator.u[F_idx + coord_idx + 3]
+#         end
+        
+#         # solve χm
+#         set_t!(integrator, t_end′)
+#         integrator.u .= ut
+#         update_u!(integrator.u, χm, n_states)
+#         for i ∈ 1:n_excited
+#             integrator.u[2n_states+i] = 0.
+#         end
+#         integrator.u[F_idx + coord_idx] = fχm
+#         integrator.u[F_idx + coord_idx + 3] = 0.
+#         integrator.p.time_to_decay = rand(integrator.p.decay_dist)
+#         integrator.p.last_decay_time = last_decay_time
+
+#         set_t!(integrator, t_end′)
+#         for j ∈ 1:n_times
+#             step!(integrator, dτ, true)
+#             cms[j] = integrator.u[F_idx + coord_idx + 3]
+#         end
+
+#         # solve χp
+#         set_t!(integrator, t_end′)
+#         integrator.u .= ut
+#         update_u!(integrator.u, χp, n_states)
+#         for i ∈ 1:n_excited
+#             integrator.u[2n_states+i] = 0.
+#         end
+#         integrator.u[F_idx + coord_idx] = fχp
+#         integrator.u[F_idx + coord_idx + 3] = 0.
+#         integrator.p.time_to_decay = rand(integrator.p.decay_dist)
+#         integrator.p.last_decay_time = last_decay_time
+
+#         set_t!(integrator, t_end′)
+#         for j ∈ 1:n_times
+#             step!(integrator, dτ, true)
+#             cps[j] = integrator.u[F_idx + coord_idx + 3]
+#         end
+        
+#         # using the integrated version of the force
+#         cm = cms[end]
+#         cp = cps[end]
+#         C = (1/4) * (μp^2 * cp - μm^2 * cm)
+
+#         fτ = fτs[end]
+
+#         Cs_integrated[i] = C
+#         fτ_fts_integrated[i] = ft * fτ
+
+#         for j ∈ 1:n_times
+
+#             cm = cms[j]
+#             cp = cps[j]
+
+#             C = (1/4) * (μp^2 * cp - μm^2 * cm)
+#             Cs[j] += C
+            
+#             fτ = fτs[j]
+#             fτ_ft = fτ * ft
+#             fτ_fts[j] += fτ_ft
+
+#         end
+        
+#     end
+
+#     Cs ./= n_avgs
+#     fτ_fts ./= n_avgs
+    
+#     return Cs, fτ_fts, Cs_integrated, fτ_fts_integrated
+# end
+# export compute_diffusion

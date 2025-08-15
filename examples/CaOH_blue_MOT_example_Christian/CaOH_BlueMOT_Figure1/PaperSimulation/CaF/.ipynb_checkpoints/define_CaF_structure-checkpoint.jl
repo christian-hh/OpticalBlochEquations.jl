@@ -4,9 +4,9 @@ include("CaF_A.jl")
 # Define constants for the laser cooling transition
 @everywhere begin
     @consts begin
-        λ = 614e-9                # wavelength of transition
-        Γ = 2π * 4.8e6            # transition linewidth
-        m = @with_unit 104.9 "u"  # mass of YO
+        λ = 606e-9                # wavelength of transition
+        Γ = 2π * 8.3e6            # transition linewidth
+        m = @with_unit 59 "u"     # mass of CaF
         k = 2π / λ                # wavenumber of transition
     end
 end

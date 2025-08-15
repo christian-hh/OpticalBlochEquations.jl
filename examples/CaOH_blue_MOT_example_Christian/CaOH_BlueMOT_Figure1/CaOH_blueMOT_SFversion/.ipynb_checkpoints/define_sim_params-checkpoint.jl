@@ -2,9 +2,9 @@
 
 sim_type = Float64
 
-σx_initial = 50e-6
-σy_initial = 50e-6
-σz_initial = 50e-6
+σx_initial = 150e-6
+σy_initial = 150e-6
+σz_initial = 150e-6
 Tx_initial = 35e-6
 Ty_initial = 35e-6
 Tz_initial = 35e-6
@@ -16,8 +16,8 @@ sim_params = MutableNamedTuple(
     Zeeman_Hz = MMatrix{size(Zeeman_z_mat)...}(sim_type.(Zeeman_z_mat)),
     
     B_ramp_time = 1e-9 / (1/Γ),
-    B_grad_start = 300,
-    B_grad_end = 300,
+    B_grad_start = 0,
+    B_grad_end = 0,
 
     s_ramp_time = 1e-9 / (1/Γ),
     s_factor_start = 1,

@@ -12,7 +12,7 @@ p_1plus2 = initialize_prob(sim_type, energies, freqs, sats, pols, beam_radius, d
 @everywhere function diffusion_kick(integrator)
     p = integrator.p
     n_states = p.n_states
-    n_excited = p.n_excited
+    n_excited = p.n_e
     @inbounds @fastmath for i ∈ 1:3
         kick = sqrt(2p.diffusion_constant[i] * p.sim_params.dt_diffusion) / p.m
         integrator.u[2n_states + n_excited + 3 + i] += rand((-1,1)) * kick

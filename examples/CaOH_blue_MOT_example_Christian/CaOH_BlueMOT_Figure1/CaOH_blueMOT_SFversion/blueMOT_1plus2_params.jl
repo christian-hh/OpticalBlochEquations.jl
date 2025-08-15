@@ -5,9 +5,9 @@ energy_offset = (2π / Γ) * energy(states[13])
 energies = energy.(states) .* (2π / Γ)
 
 # DEFINE FREQUENCIES #
-detuning = +100.0
+detuning = +75.0
 δ1 = +0.00
-δ2 = +0.06
+δ2 = -0.50
 δ3 = +0.75
 
 Δ1 = 1e6 * (detuning + δ1)
@@ -30,9 +30,9 @@ P = 0.60 * 13.1e-3 # 13.1 mW/1 V at 1.0 V, factor of 0.55 to match scattering ra
 I = 2P / (π * beam_radius^2)
 
 total_sat = I / Isat
-s1 = 3total_sat
-s2 = 3total_sat
-s3 = 0.00total_sat
+s1 = 1total_sat
+s2 = 0total_sat
+s3 = 0
 
 sats = [s1, s2, s3]
 

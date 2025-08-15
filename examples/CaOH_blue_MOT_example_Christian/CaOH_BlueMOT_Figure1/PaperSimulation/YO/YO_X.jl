@@ -3,7 +3,7 @@ QN_bounds = (
     S = 1/2, 
     I = 1/2, 
     Λ = 0, 
-    N = 1
+    N = (0,1)
 )
 basis = order_basis_by_m(enumerate_states(HundsCaseB_LinearMolecule, QN_bounds))
 

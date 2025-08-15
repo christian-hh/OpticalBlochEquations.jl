@@ -37,7 +37,8 @@ s3 = 0.35total_sat
 sats = [s1, s2, s3]
 
 # DEFINE POLARIZATIONS #
-pols = [σ⁻, σ⁺, σ⁻]
+# pols = [σ⁻, σ⁺, σ⁻]
+pols = [σ⁺, σ⁺, σ⁻]
 
 # DEFINE FUNCTION TO UPDATE PARAMETERS DURING SIMULATION #
 @everywhere function update_p_1plus2!(p, r, t)

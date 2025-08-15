@@ -153,9 +153,9 @@ end
         prob.p.sim_params.x_dist = Normal(0, σx)
         prob.p.sim_params.y_dist = Normal(0, σy)
         prob.p.sim_params.z_dist = Normal(0, σz)
-        prob.p.sim_params.vx_dist = Normal(0, Tx)
-        prob.p.sim_params.vy_dist = Normal(0, Ty)
-        prob.p.sim_params.vz_dist = Normal(0, Tz)
+        prob.p.sim_params.vx_dist = Normal(0, sqrt(kB*Tx/2m))
+        prob.p.sim_params.vy_dist = Normal(0, sqrt(kB*Ty/2m))
+        prob.p.sim_params.vz_dist = Normal(0, sqrt(kB*Tz/2m))
         return nothing
     end
 end
@@ -179,9 +179,9 @@ end
         prob.p.sim_params.x_dist = Normal(0, σx)
         prob.p.sim_params.y_dist = Normal(0, σy)
         prob.p.sim_params.z_dist = Normal(0, σz)
-        prob.p.sim_params.vx_dist = Normal(0, Tx)
-        prob.p.sim_params.vy_dist = Normal(0, Ty)
-        prob.p.sim_params.vz_dist = Normal(0, Tz)
+        prob.p.sim_params.vx_dist = Normal(0, sqrt(kB*Tx/2m))
+        prob.p.sim_params.vy_dist = Normal(0, sqrt(kB*Tx/2m))
+        prob.p.sim_params.vz_dist = Normal(0, sqrt(kB*Tx/2m))
         prob.p.diffusion_constant[1] = diffusion
         prob.p.diffusion_constant[2] = diffusion
         prob.p.diffusion_constant[3] = diffusion

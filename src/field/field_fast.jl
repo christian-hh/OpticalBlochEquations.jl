@@ -58,9 +58,9 @@ function update_E_kq!(E_kq, as, ϵs)
     return nothing
 end
 
-function update_ϕs!(ϕs, ωs, r, t)
+@inline function update_ϕs!(ϕs, ωs, k, r, t)
     @inbounds @fastmath for i ∈ 1:3
-        ϕs[1,i] = -r[i] # -k ⋅ r
+        ϕs[1,i] = -k * r[i] # -k ⋅ r, along each of kx, ky, kz; the `k` is a scalar
     end
     @inbounds @fastmath for i ∈ eachindex(ωs)
         ϕs[1,i+3] = ωs[i] * t # ω * t
@@ -73,7 +73,7 @@ end
 
 function update_as!(ϕs, as, rs)
     @turbo for k ∈ 1:3
-        # kr factor
+        # kr factor, also a factor for the amplitude scaling based on rs
         re_k = ϕs[3,k] * rs[2,k] # check speed of this function
         im_k = ϕs[2,k] * rs[2,k]
         
@@ -138,7 +138,8 @@ function update_fields_fast!(p, r, t)
     update_rs!(p.rs, r, p.denom)
     
     # update phases
-    update_ϕs!(p.ϕs, p.ωs, r, t)
+    k = 1
+    update_ϕs!(p.ϕs, p.ωs, k, r, t)
     
     # update amplitudes
     # update_as!(p.ϕs, p.as, p.rs)
@@ -153,3 +154,23 @@ function update_fields_fast!(p, r, t)
     return nothing
 end
 export update_fields_fast!
+
+function update_fields_fast_multiple!(denom, rs, ϕs, ωs, as, sats, kEs, ϵs, E, k, r, t)
+    
+    # update saturation ratios
+    update_rs!(rs, r, denom)
+    
+    # update phases
+    update_ϕs!(ϕs, ωs, k, r, t)
+    
+    # update amplitudes
+    update_as!(ϕs, as, rs, sats)
+    
+    # update kEs
+    update_E_kq!(kEs, as, ϵs)
+
+    # # update total E
+    update_E_total!(E, kEs)
+    
+    return nothing
+end

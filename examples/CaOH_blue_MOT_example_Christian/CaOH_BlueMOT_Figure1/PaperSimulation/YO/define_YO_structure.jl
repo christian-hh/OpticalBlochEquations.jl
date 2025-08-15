@@ -17,8 +17,8 @@ QuantumStates.solve!(H)
 update_basis_tdms!(H)
 update_tdms!(H)
 
-ground_state_idxs = 1:12
-excited_state_idxs = 17:20
+ground_state_idxs = 5:16
+excited_state_idxs = 21:24
 states_idxs = [ground_state_idxs; excited_state_idxs]
 
 ground_states = H.states[ground_state_idxs]
@@ -34,6 +34,25 @@ Zeeman_z(state, state′) = Zeeman(state, state′, 0)
 Zeeman_x_mat = real.(operator_to_matrix(Zeeman_x, ground_states) .* (1e-4 * gS * μB * (2π/Γ) / h))
 Zeeman_y_mat = imag.(operator_to_matrix(Zeeman_y, ground_states) .* (1e-4 * gS * μB * (2π/Γ) / h))
 Zeeman_z_mat = real.(operator_to_matrix(Zeeman_z, ground_states) .* (1e-4 * gS * μB * (2π/Γ) / h))
+
+# Zeeman_x_mat_g = real.(operator_to_matrix(Zeeman_x, ground_states) .* (1e-4 * gS * μB * (2π/Γ) / h))
+# Zeeman_y_mat_g = imag.(operator_to_matrix(Zeeman_y, ground_states) .* (1e-4 * gS * μB * (2π/Γ) / h))
+# Zeeman_z_mat_g = real.(operator_to_matrix(Zeeman_z, ground_states) .* (1e-4 * gS * μB * (2π/Γ) / h))
+
+# Zeeman_x_mat_e = real.(operator_to_matrix(Zeeman_x, excited_states) .* (0.18 * 1e-4 * gS * μB * (2π/Γ) / h))
+# Zeeman_y_mat_e = imag.(operator_to_matrix(Zeeman_y, excited_states) .* (0.18 * 1e-4 * gS * μB * (2π/Γ) / h))
+# Zeeman_z_mat_e = real.(operator_to_matrix(Zeeman_z, excited_states) .* (0.18 * 1e-4 * gS * μB * (2π/Γ) / h))
+
+# Zeeman_x_mat = zeros(Float64, 16, 16)
+# Zeeman_y_mat = zeros(Float64, 16, 16)
+# Zeeman_z_mat = zeros(Float64, 16, 16)
+
+# Zeeman_x_mat[1:12,1:12] .= Zeeman_x_mat_g
+# Zeeman_y_mat[1:12,1:12] .= Zeeman_y_mat_g
+# Zeeman_z_mat[1:12,1:12] .= Zeeman_z_mat_g
+# Zeeman_x_mat[13:16,13:16] .= Zeeman_x_mat_e
+# Zeeman_y_mat[13:16,13:16] .= Zeeman_y_mat_e
+# Zeeman_z_mat[13:16,13:16] .= Zeeman_z_mat_e
 
 @everywhere import LoopVectorization: @turbo
 @everywhere function add_terms_dψ!(dψ, ψ, p, r, t)
@@ -54,5 +73,22 @@ Zeeman_z_mat = real.(operator_to_matrix(Zeeman_z, ground_states) .* (1e-4 * gS *
         dψ.re[i] += dψ_i_im
         dψ.im[i] -= dψ_i_re
     end
+    # @turbo for i ∈ 13:16
+    #     dψ_i_re = zero(eltype(dψ.re))
+    #     dψ_i_im = zero(eltype(dψ.im))
+    #     for j ∈ 13:16
+    #         ψ_i_re = ψ.re[j]
+    #         ψ_i_im = ψ.im[j]
+            
+    #         H_re = p.sim_params.Bx * p.sim_params.Zeeman_Hx[i,j] + p.sim_params.Bz * p.sim_params.Zeeman_Hz[i,j]
+    #         H_im = p.sim_params.By * p.sim_params.Zeeman_Hy[i,j]
+            
+    #         dψ_i_re += ψ_i_re * H_re - ψ_i_im * H_im
+    #         dψ_i_im += ψ_i_re * H_im + ψ_i_im * H_re
+            
+    #     end
+    #     dψ.re[i] += dψ_i_im
+    #     dψ.im[i] -= dψ_i_re
+    # end
     return nothing
 end

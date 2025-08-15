@@ -4,7 +4,7 @@
 include("blueMOT_1plus2_params.jl")
 
 t_start = 0.0
-t_end   = 10e-3
+t_end   = 20e-3
 t_span  = (t_start, t_end) ./ (1/Γ)
 
 p_1plus2 = initialize_prob(sim_type, energies, freqs, sats, pols, beam_radius, d, m/(ħ*k^2/Γ), Γ, k, sim_params, update_p_1plus2!, add_terms_dψ!)

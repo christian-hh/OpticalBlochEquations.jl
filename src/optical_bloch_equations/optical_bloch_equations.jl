@@ -440,8 +440,8 @@ function im_commutator!(C, A, B, tmp)
     # Add adjoint C = A * B + B† * A†
     # Multiply by "i"
     @turbo for i ∈ 1:size(A,1), j ∈ 1:size(B,2)
-        Cre = 0.0
-        Cim = 0.0
+        Cre = zero(eltype(C.re))
+        Cim = zero(eltype(C.im))
         for k ∈ 1:size(A,2)
             Aik_re = A.re[i,k]
             Aik_im = A.im[i,k]
@@ -776,6 +776,9 @@ end
 export rotate_pol
 
 # Multiplication using `@turbo` from LoopVectorization
+"""
+    C <- AB
+"""
 function mul_turbo!(C, A, B)
     @turbo for m ∈ 1:size(A,1), n ∈ 1:size(B,2)
         Cmn_re = zero(eltype(C))

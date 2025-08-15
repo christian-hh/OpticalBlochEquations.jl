@@ -1,7 +1,7 @@
 name = "OpticalBlochEquations"
 uuid = "691d0331-80d3-41b1-b293-7891a6f4a14f"
-authors = ["christian-hh <christianhallas@g.harvard.edu> and contributors"]
 version = "0.1.0"
+authors = ["christian-hh <christianhallas@g.harvard.edu> and contributors"]
 
 [deps]
 DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
@@ -14,11 +14,14 @@ LsqFit = "2fda8390-95c7-5789-9bda-21331edee243"
 MutableNamedTuples = "af6c499f-54b4-48cc-bbd2-094bba7533c7"
 Optim = "429524aa-4258-5aef-a3af-852621145aeb"
 OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
+OrdinaryDiffEqCore = "bbf590c4-e513-4bbe-9b18-05decba2e5d8"
+ParallelDataTransfer = "2dcacdae-9679-587a-88bb-8b444fb7085b"
 Parameters = "d96e819e-fc66-5662-9728-84c9c7592b0a"
 PhysicalConstants = "5ad8b20f-a522-5ce9-bfc9-ddf1d5bda6ab"
 ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 RecursiveArrayTools = "731186ca-8d62-57ce-b412-fbd966d074cd"
+Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
@@ -29,6 +32,9 @@ WignerSymbols = "9f57e263-0b3d-5e2e-b1be-24f2bb48858b"
 
 [compat]
 LoopVectorization = "0.12.49"
+OrdinaryDiffEqCore = "1.29.0"
+ParallelDataTransfer = "0.5.1"
+Revise = "3.9.0"
 julia = "1"
 
 [extras]

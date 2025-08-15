@@ -32,7 +32,7 @@ function initialize_prob(
     # get some initial constants
     n_states = length(ω0s)
     n_g = find_n_g(d)
-    n_excited = n_states - n_g
+    n_e = n_states - n_g
     n_freqs = length(ωs)
 
     # set the integer type for the simulation
@@ -48,8 +48,6 @@ function initialize_prob(
     ϕs = zeros(sim_type,3,3+n_freqs)
     rs = zeros(sim_type,2,3)
     kEs = zeros(Complex{sim_type}, k_dirs, 3)
-
-    idxs = intT.(reshape(collect(1:(3n_freqs)),3,n_freqs))
 
     # define polarization array
     ϵs = zeros(Complex{sim_type},k_dirs,n_freqs,3)
@@ -70,7 +68,6 @@ function initialize_prob(
     rs = MMatrix{size(rs)...}(rs)
     kEs = StructArray(MMatrix{size(kEs)...}(kEs))
     ϵs = StructArray(MArray{Tuple{k_dirs,n_freqs,3}}(ϵs))
-    idxs = MMatrix{size(idxs)...}(idxs)
 
     # arrays related to state energies
     ω0s = MVector{size(ω0s)...}(ω0s)
@@ -91,7 +88,13 @@ function initialize_prob(
     E_total = StructArray(E_total)
 
     # note that we take the negative to ensure that the Hamiltonian is -d⋅E
-    d_ge = sim_type.(real.(-d[1:n_g,(n_g+1):n_states,:]))
+    # d_ge = sim_type.(real.(-d[1:n_g,(n_g+1):n_states,:]))
+    # d_ge = MArray{Tuple{size(d_ge)...}}(d_ge)
+    # d_eg = permutedims(d_ge,(2,1,3))
+
+    n_g_d = find_n_g(d)
+    d_ge = zeros(sim_type, n_g_d, n_states-n_g_d, 3)
+    d_ge .= real.(-d[1:n_g_d,(n_g_d+1):n_states,:])
     d_ge = MArray{Tuple{size(d_ge)...}}(d_ge)
     d_eg = permutedims(d_ge,(2,1,3))
 
@@ -108,7 +111,7 @@ function initialize_prob(
     d_exp_split = StructArray(d_exp_split)
 
     r = MVector{3}(zeros(sim_type,3))
-    r_idx = 2n_states + n_excited
+    r_idx = 2n_states + n_e
     v_idx = r_idx + 3
     F_idx = v_idx + 3
 
@@ -135,7 +138,6 @@ function initialize_prob(
         kEs=kEs,
         E_total=E_total,
         ϵs=ϵs,
-        idxs=idxs,
         denom=denom,
         ψ=ψ,
         dψ=dψ,
@@ -152,8 +154,9 @@ function initialize_prob(
         v_idx=v_idx,
         F_idx=F_idx,
         n_g=n_g,
-        n_excited=n_excited,
+        n_e=n_e,
         n_states=n_states,
+        n_g_d=n_g_d, # number of coupled states
         m=m,
         add_terms_dψ=add_terms_dψ,
         update_params=update_params,
@@ -169,6 +172,43 @@ function initialize_prob(
     return p
 end
 export initialize_prob
+
+# """
+#     Time step update function for stochastic Schrödinger simulation.
+# """
+# function ψ_fast!(du, u, p, t)
+    
+#     normalize_u!(u, p.n_states)
+
+#     update_r!(u, p.r, p.r_idx)
+
+#     p.update_params(p, p.r, t)
+
+#     update_ψ!(p.ψ, u, p.n_states)
+
+#     update_fields_fast!(p, p.r, t)
+    
+#     update_eiωt_new!(p.eiω0ts, p.ω0s, t)
+
+#     Heisenberg_turbo_state!(p.ψ, p.eiω0ts, -1)
+
+#     update_ψq!(p.ψ_q, p.d_ge, p.d_eg, p.ψ, p.n_g)
+
+#     update_d_exp!(p.d_exp, p.ψ, p.ψ_q, p.n_g)
+
+#     update_force!(p.F, p.d_exp, p.kEs)
+     
+#     update_dψ!(p.dψ, p.ψ_q, p.E_total, p.n_g, p.n_e)
+
+#     p.add_terms_dψ(p.dψ, p.ψ, p, p.r, t) # custom terms to add to dψ
+
+#     Heisenberg_turbo_state!(p.dψ, p.eiω0ts, +1)
+
+#     update_du!(du, u, p.dψ, p.ψ, p.n_states, p.n_g, p.r_idx, p.F, p.v_idx, p.F_idx, p.m)
+
+#     return nothing
+# end
+# export ψ_fast!
 
 """
     Time step update function for stochastic Schrödinger simulation.
@@ -189,19 +229,19 @@ function ψ_fast!(du, u, p, t)
 
     Heisenberg_turbo_state!(p.ψ, p.eiω0ts, -1)
 
-    update_ψq!(p.ψ_q, p.d_ge, p.d_eg, p.ψ, p.n_g)
+    update_ψq!(p.ψ_q, p.d_ge, p.d_eg, p.ψ)
 
     update_d_exp!(p.d_exp, p.ψ, p.ψ_q, p.n_g)
 
     update_force!(p.F, p.d_exp, p.kEs)
      
-    update_dψ!(p.dψ, p.ψ_q, p.E_total)
+    update_dψ!(p.dψ, p.ψ_q, p.E_total, p.n_g)
 
     p.add_terms_dψ(p.dψ, p.ψ, p, p.r, t) # custom terms to add to dψ
 
     Heisenberg_turbo_state!(p.dψ, p.eiω0ts, +1)
 
-    update_du!(du, u, p.dψ, p.ψ, p.n_states, p.n_g, p.r_idx, p.F, p.v_idx, p.F_idx, p.m)
+    update_du!(du, u, p.dψ, p.ψ, p.n_states, p.n_g, p.n_e, p.r_idx, p.F, p.v_idx, p.F_idx, p.m)
 
     return nothing
 end
@@ -223,19 +263,19 @@ function ψ_fast_ballistic!(du, u, p, t)
 
     Heisenberg_turbo_state!(p.ψ, p.eiω0ts, -1)
 
-    update_ψq!(p.ψ_q, p.d_ge, p.d_eg, p.ψ, p.n_g)
+    update_ψq!(p.ψ_q, p.d_ge, p.d_eg, p.ψ)
 
     update_d_exp!(p.d_exp, p.ψ, p.ψ_q, p.n_g)
 
     update_force!(p.F, p.d_exp, p.kEs)
      
-    update_dψ!(p.dψ, p.ψ_q, p.E_total)
+    update_dψ!(p.dψ, p.ψ_q, p.E_total, p.n_g)
 
     p.add_terms_dψ(p.dψ, p.ψ, p, p.r, t) # custom terms to add to dψ
 
     Heisenberg_turbo_state!(p.dψ, p.eiω0ts, +1)
 
-    update_du_ballistic!(du, u, p.dψ, p.ψ, p.n_states, p.n_g, p.r_idx, p.F, p.v_idx, p.F_idx, p.m)
+    update_du_ballistic!(du, u, p.dψ, p.ψ, p.n_states, p.n_g, p.n_e, p.r_idx, p.F, p.v_idx, p.F_idx, p.m)
 
     return nothing
 end
@@ -277,7 +317,7 @@ end
 end
 export update_u!
 
-@inline function update_du!(du, u, dψ, ψ, n_states, n_g, r_idx, F, v_idx, F_idx, m)
+@inline function update_du!(du, u, dψ, ψ, n_states, n_g, n_e, r_idx, F, v_idx, F_idx, m)
     @turbo for i ∈ eachindex(dψ)
         du[i] = dψ.re[i]
         du[i+n_states] = dψ.im[i]
@@ -288,69 +328,35 @@ export update_u!
         u[F_idx+k] = F[k]
         du[F_idx+k+3] = F[k] # integrated force
     end
-    @turbo for i ∈ 1:4 # combine this with loop below?
+    @turbo for i ∈ 1:n_e # combine this with loop below?
         # ψ_i_pop = ψ.re[n_g+i]^2 + ψ.im[n_g+i]^2
         ψ_i_pop = u[n_g+i]^2 + u[n_states+n_g+i]^2
         # integrated excited state population
         du[2n_states+i] = ψ_i_pop
     end
-    @turbo for i ∈ 1:4
+    @turbo for i ∈ 1:n_e
         # non-hermitian part of Hamiltonian, -im/2, but multiplied by -im also
         du[n_g+i] -= u[n_g+i]/2
-        du[n_states+n_g+i] -= u[n_states+n_g+i]/2
+        du[n_g+i+n_states] -= u[n_g+i+n_states]/2
     end
     return nothing
 end
 
-@inline function update_du_ballistic!(du, u, dψ, ψ, n_states, n_g, r_idx, F, v_idx, F_idx, m)
-    update_du!(du, u, dψ, ψ, n_states, n_g, r_idx, F, v_idx, F_idx, m)
+@inline function update_du_ballistic!(du, u, dψ, ψ, n_states, n_g, n_e, r_idx, F, v_idx, F_idx, m)
+    update_du!(du, u, dψ, ψ, n_states, n_g, n_e, r_idx, F, v_idx, F_idx, m)
     @inbounds @fastmath for k ∈ 1:3
         du[v_idx+k] = 0.
     end
 end
-
-# should this just be put directly into du? probably faster since we use one less function
-@inline function update_dψ!(dψ, ψ_q, E)
-    @turbo for i ∈ 1:12
-        dψ_i_re = zero(eltype(dψ.re))
-        dψ_i_im = zero(eltype(dψ.im))
-        for q ∈ 1:3
-            E_q_re = E.re[q]
-            E_q_im = E.im[q]
-            ψ_q_re = ψ_q.re[i,q]
-            ψ_q_im = ψ_q.im[i,q]
-            
-            dψ_i_re += ψ_q_re * E_q_re - ψ_q_im * E_q_im
-            dψ_i_im += ψ_q_re * E_q_im + ψ_q_im * E_q_re
-        end
-        dψ.re[i] = dψ_i_im # multiply by -im
-        dψ.im[i] = -dψ_i_re
-    end
-    @turbo for i ∈ 13:16
-        dψ_i_re = zero(eltype(dψ.re))
-        dψ_i_im = zero(eltype(dψ.im))
-        for q ∈ 1:3
-            E_q_re = E.re[q]
-            E_q_im = -E.im[q] # conjugate for the excited states
-            ψ_q_re = ψ_q.re[i,q]
-            ψ_q_im = ψ_q.im[i,q]
-            
-            dψ_i_re += ψ_q_re * E_q_re - ψ_q_im * E_q_im
-            dψ_i_im += ψ_q_re * E_q_im + ψ_q_im * E_q_re
-        end
-        dψ.re[i] = dψ_i_im # multiply by -im
-        dψ.im[i] = -dψ_i_re
-    end
-    return nothing
-end
-export update_dψ!
 
 """
     Evalute ψ_q ≡ d_q ψ.
 
     Break up psi into ground and excited? Also do we really need the excited states, or can we do everything with ground states and taking conjugates?
 """
-@inline function update_ψq!(ψ_q, d_ge, d_eg, ψ, n_g)
+@inline function update_ψq!(ψ_q, d_ge, d_eg, ψ)
+    n_g = size(d_ge,1)
+    # ground states
     @turbo for q ∈ 1:3
         for i ∈ axes(d_ge,1)
             ψq_re_i = zero(eltype(ψ_q.re))
@@ -366,6 +372,7 @@ export update_dψ!
             ψ_q.im[i,q] = ψq_im_i
         end
     end
+    # excited states
     @turbo for q ∈ 1:3
         for i ∈ axes(d_eg,1)
             ψq_re_i = zero(eltype(ψ_q.re))
@@ -383,6 +390,42 @@ export update_dψ!
     end
     return nothing
 end
+
+# should this just be put directly into du? probably faster since we use one less function
+@inline function update_dψ!(dψ, ψ_q, E, n_g)
+    @turbo for i ∈ 1:n_g
+        dψ_i_re = zero(eltype(dψ.re))
+        dψ_i_im = zero(eltype(dψ.im))
+        for q ∈ 1:3
+            E_q_re = E.re[q]
+            E_q_im = E.im[q]
+            ψ_q_re = ψ_q.re[i,q]
+            ψ_q_im = ψ_q.im[i,q]
+            
+            dψ_i_re += ψ_q_re * E_q_re - ψ_q_im * E_q_im
+            dψ_i_im += ψ_q_re * E_q_im + ψ_q_im * E_q_re
+        end
+        dψ.re[i] = dψ_i_im # multiply by -im
+        dψ.im[i] = -dψ_i_re
+    end
+    @turbo for i ∈ (n_g+1):length(dψ)
+        dψ_i_re = zero(eltype(dψ.re))
+        dψ_i_im = zero(eltype(dψ.im))
+        for q ∈ 1:3
+            E_q_re = E.re[q]
+            E_q_im = -E.im[q] # conjugate for the excited states
+            ψ_q_re = ψ_q.re[i,q]
+            ψ_q_im = ψ_q.im[i,q]
+            
+            dψ_i_re += ψ_q_re * E_q_re - ψ_q_im * E_q_im
+            dψ_i_im += ψ_q_re * E_q_im + ψ_q_im * E_q_re
+        end
+        dψ.re[i] = dψ_i_im # multiply by -im
+        dψ.im[i] = -dψ_i_re
+    end
+    return nothing
+end
+export update_dψ!
 
 # can maybe make it so that we don't have to take the sincos for all states if there are degeneracies
 @inline function update_eiωt_new!(eiω0ts, ω0s, t)
@@ -442,7 +485,7 @@ function stochastic_collapse_new!(integrator)
     u = integrator.u
     p = integrator.p
     n_states = p.n_states
-    n_excited = 4
+    n_excited = p.n_e
     n_ground = p.n_g
     d_ge = p.d_ge
     ψ = p.ψ
@@ -540,9 +583,9 @@ function stochastic_collapse_nokick!(integrator)
     u = integrator.u
     p = integrator.p
     n_states = p.n_states
-    n_excited = 4
+    n_excited = p.n_e
     n_ground = p.n_g
-    d_ge = p.d_ge
+    d_ge = p.d
     ψ = p.ψ
     
     p⁺ = zero(eltype(ψ.re))
@@ -550,16 +593,16 @@ function stochastic_collapse_nokick!(integrator)
     p⁻ = zero(eltype(ψ.re))
 
     @turbo for i ∈ 1:n_excited
-        c_i_re = ψ.re[n_ground + i] 
+        c_i_re = ψ.re[n_ground + i]
         c_i_im = -ψ.im[n_ground + i] # take conjugate
         for j ∈ 1:n_excited
             c_j_re = ψ.re[n_ground + j]
             c_j_im = ψ.im[n_ground + j]
             re = c_i_re * c_j_re - c_i_im * c_j_im
             for k ∈ 1:n_ground
-                p⁺ += re * d_ge[k,i,1] * d_ge[k,j,1] # assume that d is real
-                p⁰ += re * d_ge[k,i,2] * d_ge[k,j,2]
-                p⁻ += re * d_ge[k,i,3] * d_ge[k,j,3]
+                p⁺ += re * d_ge[k,i+n_ground,1] * d_ge[k,j+n_ground,1] # assume that d is real
+                p⁰ += re * d_ge[k,i+n_ground,2] * d_ge[k,j+n_ground,2]
+                p⁻ += re * d_ge[k,i+n_ground,3] * d_ge[k,j+n_ground,3]
             end
             # note the polarization p in d[:,:,p] is defined to be m_e - m_g, 
             # whereas the polarization of the emitted photon is m_g - m_e
@@ -589,9 +632,7 @@ function stochastic_collapse_nokick!(integrator)
     # decay from excited to ground state
     @turbo for i ∈ 1:n_ground
         for j ∈ 1:n_excited
-            d = d_ge[i,j,pol]
-            # ψ.re[i] += d * ψ.re[n_ground+j]
-            # ψ.im[i] += d * ψ.im[n_ground+j]
+            d = d_ge[i,j+n_ground,pol]
             u[i] += d * ψ.re[n_ground+j]
             u[i+n_states] += d * ψ.im[n_ground+j]
         end
@@ -599,8 +640,6 @@ function stochastic_collapse_nokick!(integrator)
     
     # zero excited state amplitudes
     @turbo for i ∈ 1:n_excited
-        # ψ.re[n_ground+i] = zero(eltype(ψ.re))
-        # ψ.im[n_ground+i] = zero(eltype(ψ.im))
         u[n_ground+i] = zero(eltype(u))
         u[i+n_states+n_ground] = zero(eltype(u))
     end
@@ -624,6 +663,7 @@ function stochastic_collapse_nokick!(integrator)
 end
 export stochastic_collapse_nokick!
 
+
 @inline function condition_new(u,t,integrator)
     p = integrator.p
     integrated_excited_pop = zero(eltype(u))
@@ -639,7 +679,7 @@ export condition_new
 @inline function condition_discrete(u,t,integrator)
     p = integrator.p
     integrated_excited_pop = zero(eltype(u))
-    @inbounds @fastmath for i ∈ 1:4
+    @inbounds @fastmath for i ∈ 1:p.n_e
         p_i = u[2p.n_states+i]
         integrated_excited_pop += p_i
     end
@@ -653,7 +693,7 @@ function stochastic_collapse_no_diffusion!(integrator)
     u = integrator.u
     p = integrator.p
     n_states = p.n_states
-    n_excited = 4
+    n_excited = p.n_e
     n_ground = p.n_g
     d_ge = p.d_ge
     ψ = p.ψ

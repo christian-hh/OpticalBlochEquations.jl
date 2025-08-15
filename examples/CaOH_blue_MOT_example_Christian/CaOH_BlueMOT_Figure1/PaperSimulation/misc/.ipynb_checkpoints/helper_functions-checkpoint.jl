@@ -1,9 +1,16 @@
-x(u) = real(u[32+4+1]) * (1/k)
-y(u) = real(u[32+4+2]) * (1/k)
-z(u) = real(u[32+4+3]) * (1/k)
-vx(u) = real(u[32+4+4]) * (Γ/k)
-vy(u) = real(u[32+4+5]) * (Γ/k)
-vz(u) = real(u[32+4+6]) * (Γ/k)
+x(u) = real(u[40+4+1]) * (1/k)
+y(u) = real(u[40+4+2]) * (1/k)
+z(u) = real(u[40+4+3]) * (1/k)
+vx(u) = real(u[40+4+4]) * (Γ/k)
+vy(u) = real(u[40+4+5]) * (Γ/k)
+vz(u) = real(u[40+4+6]) * (Γ/k)
+
+# x(u) = real(u[32+4+1]) * (1/k)
+# y(u) = real(u[32+4+2]) * (1/k)
+# z(u) = real(u[32+4+3]) * (1/k)
+# vx(u) = real(u[32+4+4]) * (Γ/k)
+# vy(u) = real(u[32+4+5]) * (Γ/k)
+# vz(u) = real(u[32+4+6]) * (Γ/k)
 
 function update_phases!(prob)
     for k ∈ 1:3
@@ -49,7 +56,7 @@ end
 function terminate_condition(u,t,integrator)
     p = integrator.p
     r = sqrt(x(u)^2 + y(u)^2 + z(u)^2)
-    if r >= 3e-3 && (t > 1e-3 / (1/p.Γ))
+    if r >= 2e-3 && (t > 1e-3 / (1/p.Γ))
         return true
     elseif p.n_scatters > p.sim_params.photon_budget
         return true
@@ -57,10 +64,10 @@ function terminate_condition(u,t,integrator)
     return false
 end
 
-@everywhere function sample_position(p)
+function sample_position(p)
     r = (rand(p.x_dist), rand(p.y_dist), rand(p.z_dist))
 end
-@everywhere function sample_velocity(p)
+function sample_velocity(p)
     v = (rand(p.vx_dist), rand(p.vy_dist), rand(p.vz_dist))
 end
 
@@ -88,7 +95,7 @@ import StatsBase: Histogram, fit
 # POSITION FITTING FUNCTIONS #
 function σ_fit(xs)
     
-    hist_data = fit(Histogram, xs, -2e-3:1e-5:2e-3)
+    hist_data = fit(Histogram, xs, -3e-3:1e-5:3e-3)
     hist_data.isdensity = true
     v = collect(hist_data.edges[1])
     dv = v[2]-v[1]
@@ -119,7 +126,7 @@ function T_fit(vs)
     v = v[1:end-1] .+ dv/2
     fv = hist_data.weights ./ (sum(hist_data.weights) * dv)
 
-    v_fit = curve_fit(maxwell_boltzmann, v, fv, [1, 150e-6], autodiff=:forward)
+    v_fit = curve_fit(maxwell_boltzmann, v, fv, [1, 50e-6], autodiff=:forward)
     A, temp = v_fit.param
     
     return temp
@@ -134,7 +141,7 @@ function T_fit_1D(vs)
     v = v[1:end-1] .+ dv/2
     fv = hist_data.weights ./ (sum(hist_data.weights) * dv)
 
-    v_fit = curve_fit(maxwell_boltzmann_1D, v, fv, [10, 10e-6], autodiff=:forward)
+    v_fit = curve_fit(maxwell_boltzmann_1D, v, fv, [10, 50e-6], autodiff=:forward)
     A, temp = v_fit.param
     
     return temp
@@ -150,7 +157,7 @@ Tz_fit(sols) = T_coord_fit(sols, vz)
 
 function survived(sol)
     r = sqrt(x(sol.u[end])^2 + y(sol.u[end])^2 + z(sol.u[end])^2)
-    if r <= 3e-3 && string(sol.retcode) == "Success"
+    if r <= 2e-3 && string(sol.retcode) == "Success"
         return true
     end
     return false
@@ -159,7 +166,7 @@ end
 function survived(sol, i)
     if i <= length(sol.t)
         r = sqrt(x(sol.u[i])^2 + y(sol.u[i])^2 + z(sol.u[i])^2)
-        if r <= 3e-3
+        if r <= 2e-3
             return true
         end
     end
@@ -328,5 +335,35 @@ function distributed_compute_diffusion(prob, prob_func, n_trajectories, t_end, �
             put!(channel, false)
         end
     end
+
+    # @sync begin
+    #     for (i, scan_value) ∈ enumerate(scan_values)
+            
+    #         futures = Vector{Future}()
+    #         for pid ∈ workers()
+    #             future = @spawnat pid begin
+    #                 scan_func(prob, scan_value)
+    #                 compute_diffusion(prob, prob_func, n_trajectories, t_end, τ_total, n_times, channel)
+    #             end
+    #             push!(futures, future)
+    #         end
+    #         rets = fetch.(futures)
+            
+    #         Cs = real.(ret[1] for ret ∈ rets)
+    #         fτ_fts = real.(ret[2] for ret ∈ rets)
+    #         Cs_integrated = vcat(real.(ret[3] for ret ∈ rets)...)
+    #         fτ_fts_integrated = vcat(real.(ret[4] for ret ∈ rets)...)
+            
+    #         diffusion_over_time = mean(Cs) .- mean(fτ_fts)
+    #         push!(diffusions_over_time, diffusion_over_time)
+
+    #         diffusion = Cs_integrated .- fτ_fts_integrated
+    #         diffusions[i] = mean(diffusion)
+
+    #         bs = bootstrap(mean, diffusion, BasicSampling(1000))
+    #         diffusion_errors[i] = stderror(bs)[1]
+            
+    #     end
+    # end
     return (diffusions, diffusion_errors, diffusions_over_time)
 end
